@@ -31,11 +31,9 @@
       <scope>provided</scope>
     </dependency>
   </dependencies>
-<!--  <build>-->
-<!--    <finalName>AstonIntensiveFirstTask</finalName>-->
-<!--  </build>-->
+
   <build>
-    <finalName>astonTask</finalName>
+    <finalName>AstonIntensiveFirstTask</finalName>
     <pluginManagement><!-- lock down plugins versions to avoid using Maven defaults (may be moved to parent pom) -->
       <plugins>
         <plugin>
