@@ -25,7 +25,7 @@ alter table employees
 CREATE TABLE IF NOT EXISTS projects
 (
     id serial NOT NULL PRIMARY KEY,
-    name character varying(30) NOT NULL
+    name character varying(30) NOT NULL UNIQUE
     );
 
 alter table projects

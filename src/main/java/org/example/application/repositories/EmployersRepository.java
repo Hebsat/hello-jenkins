@@ -2,7 +2,6 @@ package org.example.application.repositories;
 
 import lombok.RequiredArgsConstructor;
 import org.example.application.mappers.EmployersMapper;
-import org.example.application.mappers.ProjectsMapper;
 import org.example.application.model.Employee;
 import org.example.application.services.ConnectionService;
 import org.springframework.stereotype.Repository;
