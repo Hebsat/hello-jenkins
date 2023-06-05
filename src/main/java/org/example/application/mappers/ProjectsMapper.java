@@ -1,40 +1,29 @@
 package org.example.application.mappers;
 
 import lombok.RequiredArgsConstructor;
+import org.example.application.api.response.EmployeeResponse;
+import org.example.application.api.response.ProjectResponse;
 import org.example.application.model.Employee;
 import org.example.application.model.Project;
 import org.springframework.stereotype.Service;
 
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.util.ArrayList;
 import java.util.List;
 
 @Service
 @RequiredArgsConstructor
 public class ProjectsMapper {
 
-    private final EmployersMapper employersMapper;
+    private final EmployeesMapper employeesMapper;
 
-    public Project mapToProjectFull(ResultSet resultSet) {
-        try {
-            return Project.builder()
-                    .id(resultSet.getInt("projectId"))
-                    .name(resultSet.getString("projectName"))
-                    .employees(createEmployeesList(resultSet))
-                    .build();
-        } catch (SQLException e) {
-            e.printStackTrace();
-            throw new RuntimeException(e);
-        }
+    public ProjectResponse projectToResponse(Project project) {
+        return ProjectResponse.builder()
+                .id(project.getId())
+                .name(project.getName())
+                .employees(getEmployeesResponses(project.getEmployees()))
+                .build();
     }
 
-    private List<Employee> createEmployeesList(ResultSet resultSet) {
-        Employee employee = employersMapper.mapToEmployeeSimple(resultSet);
-        List<Employee> employees = new ArrayList<>();
-        if (employee.getId() != 0) {
-            employees.add(employee);
-        }
-        return employees;
+    private List<EmployeeResponse> getEmployeesResponses(List<Employee> employees) {
+        return employeesMapper.mapEmployees(employees);
     }
 }

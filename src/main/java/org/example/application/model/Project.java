@@ -1,19 +1,23 @@
 package org.example.application.model;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
-import lombok.Builder;
-import lombok.Data;
+import javax.persistence.*;
+import lombok.*;
 
 import java.util.List;
 
-import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
-
-@Data
+@Entity
+@Getter
+@Setter
 @Builder
-@JsonInclude(value = NON_NULL)
+@NoArgsConstructor
+@AllArgsConstructor
+@Table(name = "projects")
 public class Project {
 
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private int id;
     private String name;
+    @ManyToMany(mappedBy = "projects", fetch = FetchType.EAGER)
     private List<Employee> employees;
 }

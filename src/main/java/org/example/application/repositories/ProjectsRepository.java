@@ -1,118 +1,85 @@
 package org.example.application.repositories;
 
 import lombok.RequiredArgsConstructor;
-import org.example.application.mappers.EmployersMapper;
-import org.example.application.mappers.ProjectsMapper;
+import org.example.application.exceptions.IncorrectDataException;
 import org.example.application.model.Project;
-import org.example.application.services.ConnectionService;
+import org.hibernate.Session;
+import org.hibernate.SessionFactory;
+import org.hibernate.Transaction;
 import org.springframework.stereotype.Service;
 
-import java.sql.*;
+import javax.persistence.Query;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
 public class ProjectsRepository {
 
-    private final ProjectsMapper projectsMapper;
-    private final ConnectionService connectionService;
-    private final EmployersMapper employersMapper;
+    private final SessionFactory sessionFactory;
 
-    public List<Project> getAllProjects() {
-        String sql = "SELECT e.id employeeId, e.first_name firstName, e.last_name lastName, " +
-                "p.id positionId, p.name positionName, j.id projectId, j.name projectName " +
-                "FROM projects j " +
-                "LEFT JOIN employees_2_projects t ON t.project_id = j.id " +
-                "LEFT JOIN employees e ON t.employee_id = e.id " +
-                "LEFT JOIN positions p ON e.position_id = p.id " +
-                "ORDER BY j.id, e.id";
-        List<Project> projects = new ArrayList<>();
-        try (Connection connection = connectionService.getConnection()){
-            Statement statement = connection.createStatement();
-            ResultSet resultSet = statement.executeQuery(sql);
-            Project project = null;
-            while (resultSet.next()) {
-                if (project == null) {
-                    project = projectsMapper.mapToProjectFull(resultSet);
-                }
-                else if (project.getId() == resultSet.getInt("projectId")) {
-                    project.getEmployees().add(employersMapper.mapToEmployeeSimple(resultSet));
-                }
-                else {
-                    projects.add(project);
-                    project = projectsMapper.mapToProjectFull(resultSet);
-                }
-            }
-            if (project != null) {
-                projects.add(project);
-            }
-            return projects;
-        } catch (SQLException e) {
+    public List<Project> findAll() {
+        try (Session session = sessionFactory.openSession()){
+            Transaction transaction = session.beginTransaction();
+            List<Project> positions = session.createQuery("FROM Project", Project.class).getResultList();
+            transaction.commit();
+            return positions;
+        } catch (Exception e) {
             e.printStackTrace();
-            throw new RuntimeException(e);
+            return new ArrayList<>();
         }
     }
 
-    public Project getProjectByName(String name) {
-        String sql = "SELECT e.id employeeId, e.first_name firstName, e.last_name lastName, " +
-                "p.id positionId, p.name positionName, j.id projectId, j.name projectName " +
-                "FROM projects j " +
-                "LEFT JOIN employees_2_projects t ON t.project_id = j.id " +
-                "LEFT JOIN employees e ON t.employee_id = e.id " +
-                "LEFT JOIN positions p ON e.position_id = p.id " +
-                " WHERE j.name = ?;";
-        Project project = null;
-        try (Connection connection = connectionService.getConnection()){
-            PreparedStatement statement = connection.prepareStatement(sql);
-            statement.setString(1, name);
-            ResultSet resultSet = statement.executeQuery();
-            while (resultSet.next()) {
-                if (project == null) {
-                    project = projectsMapper.mapToProjectFull(resultSet);
-                }
-                else {
-                    project.getEmployees().add(employersMapper.mapToEmployeeSimple(resultSet));
-                }
-            }
-        } catch (SQLException e) {
-            throw new RuntimeException(e);
+    public Optional<Project> findByName(String name) {
+        Optional<Project> optionalEmployee = Optional.empty();
+        try (Session session = sessionFactory.openSession()){
+            Transaction transaction = session.beginTransaction();
+            Query query = (Query) session.createQuery("FROM Project WHERE name = :name", Project.class);
+            query.setParameter("name", name);
+            Project project = (Project) query.getSingleResult();
+            transaction.commit();
+            optionalEmployee = Optional.of(project);
+        } catch (Exception e) {
+            e.printStackTrace();
         }
-        return project;
+        return optionalEmployee;
     }
 
-    public boolean addNewProject(String name) {
-        String sql = "INSERT INTO projects (name) VALUES (?)";
-        try (Connection connection = connectionService.getConnection()){
-            PreparedStatement statement = connection.prepareStatement(sql);
-            statement.setString(1, name);
-            return statement.executeUpdate() > 0;
-        } catch (SQLException e) {
+    public boolean save(Project project) throws IncorrectDataException {
+        try (Session session = sessionFactory.openSession()){
+            Transaction transaction = session.beginTransaction();
+            session.persist(project);
+            transaction.commit();
+            return true;
+        } catch (Exception e) {
+            throw new IncorrectDataException("position with name " + project.getName() + " is already exists");
+        }
+    }
+
+    public boolean update(String lastName, String newName) {
+        try (Session session = sessionFactory.openSession()){
+            Transaction transaction = session.beginTransaction();
+            Query query = (Query) session.createQuery("FROM Project WHERE name = :name", Project.class);
+            query.setParameter("name", lastName);
+            Project project = (Project) query.getSingleResult();
+            project.setName(newName);
+            session.persist(project);
+            transaction.commit();
+            return true;
+        } catch (Exception e) {
             e.printStackTrace();
             return false;
         }
     }
 
-    public boolean changeProjectName(String oldName, String newName) {
-        String sql = "UPDATE  projects SET name = ? WHERE name = ?";
-        try (Connection connection = connectionService.getConnection()){
-            PreparedStatement statement = connection.prepareStatement(sql);
-            statement.setString(1, newName);
-            statement.setString(2, oldName);
-            return statement.executeUpdate() > 0;
-        } catch (SQLException e) {
-            e.printStackTrace();
-            return false;
-        }
-    }
-
-    public boolean deleteProject(String name) {
-        String sql = "DELETE FROM projects WHERE name = ?";
-        try (Connection connection = connectionService.getConnection()){
-            PreparedStatement statement = connection.prepareStatement(sql);
-            statement.setString(1, name);
-            return statement.executeUpdate() > 0;
-        } catch (SQLException e) {
+    public boolean delete(Project project) {
+        try (Session session = sessionFactory.openSession()){
+            Transaction transaction = session.beginTransaction();
+            session.remove(project);
+            transaction.commit();
+            return true;
+        } catch (Exception e) {
             e.printStackTrace();
             return false;
         }

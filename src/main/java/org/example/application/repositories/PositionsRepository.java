@@ -1,110 +1,85 @@
 package org.example.application.repositories;
 
 import lombok.RequiredArgsConstructor;
-import org.example.application.mappers.EmployersMapper;
-import org.example.application.mappers.PositionsMapper;
+import org.example.application.exceptions.IncorrectDataException;
 import org.example.application.model.Position;
-import org.example.application.services.ConnectionService;
+import org.hibernate.Session;
+import org.hibernate.SessionFactory;
+import org.hibernate.Transaction;
 import org.springframework.stereotype.Repository;
 
-import java.sql.*;
+import javax.persistence.Query;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 @RequiredArgsConstructor
 public class PositionsRepository {
 
-    private final ConnectionService connectionService;
-    private final PositionsMapper positionsMapper;
-    private final EmployersMapper employersMapper;
+    private final SessionFactory sessionFactory;
 
-    public List<Position> getAllPositions() {
-        String sql = "SELECT e.id employeeId, e.first_name firstName, e.last_name lastName, " +
-                "p.id positionId, p.name positionName FROM positions p " +
-                "LEFT JOIN employees e ON e.position_id = p.id ORDER BY p.id, e.id;";
-        List<Position> positions = new ArrayList<>();
-        try (Connection connection = connectionService.getConnection()){
-            Statement statement = connection.createStatement();
-            ResultSet resultSet = statement.executeQuery(sql);
-            Position position = null;
-            while (resultSet.next()) {
-                if (position == null) {
-                    position = positionsMapper.mapToPositionFull(resultSet);
-                }
-                else if (position.getId() == resultSet.getInt("positionId")) {
-                    position.getEmployees().add(employersMapper.mapToEmployeeSimple(resultSet));
-                }
-                else {
-                    positions.add(position);
-                    position = positionsMapper.mapToPositionFull(resultSet);
-                }
-            }
-            if (position != null) {
-                positions.add(position);
-            }
+    public List<Position> findAll() {
+        try (Session session = sessionFactory.openSession()){
+            Transaction transaction = session.beginTransaction();
+            List<Position> positions = session.createQuery("FROM Position", Position.class).getResultList();
+            transaction.commit();
             return positions;
-        } catch (SQLException e) {
+        } catch (Exception e) {
             e.printStackTrace();
-            throw new RuntimeException(e);
+            return new ArrayList<>();
         }
     }
 
-    public Position getPositionByName(String name) {
-        String sql = "SELECT e.id employeeId, e.first_name firstName, e.last_name lastName, " +
-                "p.id positionId, p.name positionName FROM positions p " +
-                "LEFT JOIN employees e ON e.position_id = p.id WHERE p.name = ?;";
-        Position position = null;
-        try (Connection connection = connectionService.getConnection()){
-            PreparedStatement statement = connection.prepareStatement(sql);
-            statement.setString(1, name);
-            ResultSet resultSet = statement.executeQuery();
-            while (resultSet.next()) {
-                if (position == null) {
-                    position = positionsMapper.mapToPositionFull(resultSet);
-                }
-                else {
-                    position.getEmployees().add(employersMapper.mapToEmployeeSimple(resultSet));
-                }
-            }
-        } catch (SQLException e) {
-            throw new RuntimeException(e);
-        }
-        return position;
-    }
-
-    public boolean addNewPosition(String name) {
-        String sql = "INSERT INTO positions (name) VALUES (?)";
-        try (Connection connection = connectionService.getConnection()){
-            PreparedStatement statement = connection.prepareStatement(sql);
-            statement.setString(1, name);
-            return statement.executeUpdate() > 0;
-        } catch (SQLException e) {
+    public Optional<Position> findByName(String name) {
+        Optional<Position> optionalEmployee = Optional.empty();
+        try (Session session = sessionFactory.openSession()){
+            Transaction transaction = session.beginTransaction();
+            Query query = (Query) session.createQuery("FROM Position WHERE name = :name", Position.class);
+            query.setParameter("name", name);
+            Position position = (Position) query.getSingleResult();
+            transaction.commit();
+            optionalEmployee = Optional.of(position);
+        } catch (Exception e) {
             e.printStackTrace();
-            return false;
+        }
+        return optionalEmployee;
+    }
+
+    public boolean save(Position position) throws IncorrectDataException {
+        try (Session session = sessionFactory.openSession()){
+            Transaction transaction = session.beginTransaction();
+            session.persist(position);
+            transaction.commit();
+            return true;
+        } catch (Exception e) {
+            throw new IncorrectDataException("position with name " + position.getName() + " is already exists");
         }
     }
 
-    public boolean changeName(String oldName, String newName) {
-        String sql = "UPDATE  positions SET name = ? WHERE name = ?";
-        try (Connection connection = connectionService.getConnection()){
-            PreparedStatement statement = connection.prepareStatement(sql);
-            statement.setString(1, newName);
-            statement.setString(2, oldName);
-            return statement.executeUpdate() > 0;
-        } catch (SQLException e) {
+    public boolean update(String lastName, String newName) {
+        try (Session session = sessionFactory.openSession()){
+            Transaction transaction = session.beginTransaction();
+            Query query = (Query) session.createQuery("FROM Position WHERE name = :name", Position.class);
+            query.setParameter("name", lastName);
+            Position position = (Position) query.getSingleResult();
+            position.setName(newName);
+            session.persist(position);
+            transaction.commit();
+            return true;
+        } catch (Exception e) {
             e.printStackTrace();
             return false;
         }
     }
 
-    public boolean deletePosition(String name) {
-        String sql = "DELETE FROM positions WHERE name = ?";
-        try (Connection connection = connectionService.getConnection()){
-            PreparedStatement statement = connection.prepareStatement(sql);
-            statement.setString(1, name);
-            return statement.executeUpdate() > 0;
-        } catch (SQLException e) {
+    public boolean delete(Position position) {
+        try (Session session = sessionFactory.openSession()){
+            Transaction transaction = session.beginTransaction();
+            session.remove(position);
+            transaction.commit();
+            return true;
+        } catch (Exception e) {
             e.printStackTrace();
             return false;
         }
