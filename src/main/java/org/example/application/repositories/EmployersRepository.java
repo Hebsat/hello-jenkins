@@ -22,47 +22,60 @@ public class EmployersRepository {
     private final SessionFactory sessionFactory;
 
     public List<Employee> findAll() {
+        Transaction transaction = null;
         try (Session session = sessionFactory.openSession()){
-            Transaction transaction = session.beginTransaction();
+            transaction = session.beginTransaction();
             List<Employee> employees = session.createQuery("FROM Employee", Employee.class).getResultList();
             transaction.commit();
             return employees;
         } catch (Exception e) {
+            if (transaction != null) {
+                transaction.rollback();
+            }
             e.printStackTrace();
             return new ArrayList<>();
         }
     }
 
     public Optional<Employee> findById(int id) {
+        Transaction transaction = null;
         Optional<Employee> optionalEmployee = Optional.empty();
         try (Session session = sessionFactory.openSession()){
-            Transaction transaction = session.beginTransaction();
+            transaction = session.beginTransaction();
             Query query = (Query) session.createQuery("FROM Employee WHERE id = :id", Employee.class);
             query.setParameter("id", id);
             Employee employee = (Employee) query.getSingleResult();
             transaction.commit();
             optionalEmployee = Optional.of(employee);
         } catch (Exception e) {
+            if (transaction != null) {
+                transaction.rollback();
+            }
             e.printStackTrace();
         }
         return optionalEmployee;
     }
 
     public boolean save(Employee employee) {
+        Transaction transaction = null;
         try (Session session = sessionFactory.openSession()){
-            Transaction transaction = session.beginTransaction();
+            transaction = session.beginTransaction();
             session.persist(employee);
             transaction.commit();
             return true;
         } catch (Exception e) {
+            if (transaction != null) {
+                transaction.rollback();
+            }
             e.printStackTrace();
             return false;
         }
     }
 
     public boolean update(int id, String firstName, String lastName, Position position, List<Project> projects) {
+        Transaction transaction = null;
         try (Session session = sessionFactory.openSession()){
-            Transaction transaction = session.beginTransaction();
+            transaction = session.beginTransaction();
             Query query = (Query) session.createQuery("FROM Employee WHERE id = :id", Employee.class);
             query.setParameter("id", id);
             Employee employee = (Employee) query.getSingleResult();
@@ -82,26 +95,34 @@ public class EmployersRepository {
             transaction.commit();
             return true;
         } catch (Exception e) {
+            if (transaction != null) {
+                transaction.rollback();
+            }
             e.printStackTrace();
             return false;
         }
     }
 
     public boolean delete(Employee employee) {
+        Transaction transaction = null;
         try (Session session = sessionFactory.openSession()){
-            Transaction transaction = session.beginTransaction();
+            transaction = session.beginTransaction();
             session.remove(employee);
             transaction.commit();
             return true;
         } catch (Exception e) {
+            if (transaction != null) {
+                transaction.rollback();
+            }
             e.printStackTrace();
             return false;
         }
     }
 
     public boolean deleteAssigningToProject(Employee employee, Project project) {
+        Transaction transaction = null;
         try (Session session = sessionFactory.openSession()){
-            Transaction transaction = session.beginTransaction();
+            transaction = session.beginTransaction();
             Query query = (Query) session.createQuery("FROM Employee2Project WHERE employeeId = :employeeId AND projectId = :projectId", Employee2Project.class);
             query.setParameter("employeeId", employee.getId());
             query.setParameter("projectId", project.getId());
@@ -110,6 +131,9 @@ public class EmployersRepository {
             transaction.commit();
             return true;
         } catch (Exception e) {
+            if (transaction != null) {
+                transaction.rollback();
+            }
             e.printStackTrace();
             return false;
         }
